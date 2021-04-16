@@ -10,9 +10,12 @@
     <!-- Load Posenet -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
     <style>
-      canvas{display:none}
-      video{display:none}
-
+      canvas {
+        display: none;
+      }
+      video {
+        display: none;
+      }
     </style>
   </head>
 
@@ -20,54 +23,6 @@
     <div id="app">
       <video id="player" autoplay></video>
       <canvas id="snapshot" width="320" height="320"></canvas>
-      <svg width="320" height="320">
-        <circle :cx="head.x" :cy="head.y" :r="head.r"></circle>
-        <polyline
-          stroke-linejoin="round"
-          stroke="black"
-          stroke-width="40"
-          :points="armStr"
-          fill="none"
-        ></polyline>
-        <polyline
-          stroke-linejoin="round"
-          stroke="black"
-          stroke-width="40"
-          :points="spineStr"
-          fill="none"
-        ></polyline>
-        <polyline
-          stroke-linejoin="round"
-          stroke="black"
-          stroke-width="40"
-          :points="legStr"
-          fill="none"
-        ></polyline>
-      </svg>
-      <svg width="320" height="320">
-        <circle :cx="head.x" :cy="head.y" :r="head.r"></circle>
-        <polyline
-          stroke-linejoin="round"
-          stroke="black"
-          stroke-width="40"
-          :points="armStr"
-          fill="none"
-        ></polyline>
-        <polyline
-          stroke-linejoin="round"
-          stroke="black"
-          stroke-width="40"
-          :points="spineStr"
-          fill="none"
-        ></polyline>
-        <polyline
-          stroke-linejoin="round"
-          stroke="black"
-          stroke-width="40"
-          :points="legStr"
-          fill="none"
-        ></polyline>
-      </svg>
       <svg width="320" height="320">
         <circle :cx="head.x" :cy="head.y" :r="head.r"></circle>
         <polyline
@@ -112,7 +67,10 @@
       };
     };
     const toPoints = (p) => {
-      return p.filter(i => i.score > 0.1).map((i) => `${i.position.x},${i.position.y}`).join(" ");
+      return p
+        .filter((i) => i.score > 0.1)
+        .map((i) => `${i.position.x},${i.position.y}`)
+        .join(" ");
     };
     let init = {
       position: { x: 0, y: 0 },
@@ -184,7 +142,10 @@
           return {
             x: this.nose.position.x,
             y: this.nose.position.y,
-            r: Math.max(dst(this.leftShoulder, this.rightShoulder) / 2, dst(this.neck, this.nose) *0.7),
+            r: Math.max(
+              dst(this.leftShoulder, this.rightShoulder) / 2,
+              dst(this.neck, this.nose) * 0.7
+            ),
           };
         },
       },
