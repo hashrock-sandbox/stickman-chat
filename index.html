@@ -9,7 +9,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <!-- Load Posenet -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
-    <style></style>
+    <style>
+      canvas{display:none}
+      video{display:none}
+
+    </style>
   </head>
 
   <body>
@@ -40,40 +44,102 @@
           fill="none"
         ></polyline>
       </svg>
+      <svg width="320" height="320">
+        <circle :cx="head.x" :cy="head.y" :r="head.r"></circle>
+        <polyline
+          stroke-linejoin="round"
+          stroke="black"
+          stroke-width="40"
+          :points="armStr"
+          fill="none"
+        ></polyline>
+        <polyline
+          stroke-linejoin="round"
+          stroke="black"
+          stroke-width="40"
+          :points="spineStr"
+          fill="none"
+        ></polyline>
+        <polyline
+          stroke-linejoin="round"
+          stroke="black"
+          stroke-width="40"
+          :points="legStr"
+          fill="none"
+        ></polyline>
+      </svg>
+      <svg width="320" height="320">
+        <circle :cx="head.x" :cy="head.y" :r="head.r"></circle>
+        <polyline
+          stroke-linejoin="round"
+          stroke="black"
+          stroke-width="40"
+          :points="armStr"
+          fill="none"
+        ></polyline>
+        <polyline
+          stroke-linejoin="round"
+          stroke="black"
+          stroke-width="40"
+          :points="spineStr"
+          fill="none"
+        ></polyline>
+        <polyline
+          stroke-linejoin="round"
+          stroke="black"
+          stroke-width="40"
+          :points="legStr"
+          fill="none"
+        ></polyline>
+      </svg>
     </div>
   </body>
   <!-- Place your code in the script tag below. You can also use an external .js file -->
   <script>
     const dst = (a, b) =>
-      Math.pow(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2), 0.5);
+      Math.pow(
+        Math.pow(a.position.x - b.position.x, 2) +
+          Math.pow(a.position.y - b.position.y, 2),
+        0.5
+      );
     const avg = (a, b) => {
-      return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      return {
+        position: {
+          x: (a.position.x + b.position.x) / 2,
+          y: (a.position.y + b.position.y) / 2,
+        },
+        score: Math.min(a.score + b.score),
+      };
     };
     const toPoints = (p) => {
-      return p.map((i) => `${i.x},${i.y}`).join(" ");
+      return p.filter(i => i.score > 0.1).map((i) => `${i.position.x},${i.position.y}`).join(" ");
+    };
+    let init = {
+      position: { x: 0, y: 0 },
+      score: 0,
     };
 
     new Vue({
       el: "#app",
       data() {
         return {
-          nose: { x: 0, y: 0 },
-          leftEye: { x: 0, y: 0 },
-          rightEye: { x: 0, y: 0 },
-          leftEar: { x: 0, y: 0 },
-          rightEar: { x: 0, y: 0 },
-          leftShoulder: { x: 0, y: 0 },
-          rightShoulder: { x: 0, y: 0 },
-          leftElbow: { x: 0, y: 0 },
-          rightElbow: { x: 0, y: 0 },
-          leftWrist: { x: 0, y: 0 },
-          rightWrist: { x: 0, y: 0 },
-          leftHip: { x: 0, y: 0 },
-          rightHip: { x: 0, y: 0 },
-          leftKnee: { x: 0, y: 0 },
-          rightKnee: { x: 0, y: 0 },
-          leftAnkle: { x: 0, y: 0 },
-          rightAnkle: { x: 0, y: 0 },
+          nose: init,
+          leftEye: init,
+          rightEye: init,
+          leftEar: init,
+          rightEar: init,
+          leftShoulder: init,
+          rightShoulder: init,
+          leftElbow: init,
+          rightElbow: init,
+          leftWrist: init,
+          rightWrist: init,
+          leftHip: init,
+          rightHip: init,
+          leftKnee: init,
+          rightKnee: init,
+          leftAnkle: init,
+          rightAnkle: init,
         };
       },
       computed: {
@@ -97,7 +163,7 @@
           ];
         },
         legStr() {
-          return toPoints(this.leg)
+          return toPoints(this.leg);
         },
         spine() {
           return [this.nose, this.neck, this.hip];
@@ -116,9 +182,9 @@
         },
         head() {
           return {
-            x: this.nose.x,
-            y: this.nose.y,
-            r: dst(this.leftShoulder, this.rightShoulder) / 2,
+            x: this.nose.position.x,
+            y: this.nose.position.y,
+            r: Math.max(dst(this.leftShoulder, this.rightShoulder) / 2, dst(this.neck, this.nose) *0.7),
           };
         },
       },
@@ -140,8 +206,7 @@
         let height = snapshotCanvas.height;
 
         // Hey frontend guys, I reinvented jQuery
-        const $ = (pose, part) =>
-          pose.keypoints.find((i) => i.part === part).position;
+        const $ = (pose, part) => pose.keypoints.find((i) => i.part === part);
 
         let startScan = (callback) => {
           const ctx = snapshotCanvas.getContext("2d");
@@ -176,7 +241,7 @@
                   this.rightAnkle = $(pose, "rightAnkle");
                 });
             }
-          }, 100);
+          }, 50);
         };
 
         let handleSuccess = function (stream) {
