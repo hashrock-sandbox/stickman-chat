@@ -23,31 +23,7 @@
     <div id="app">
       <video id="player" autoplay></video>
       <canvas id="snapshot" width="320" height="320"></canvas>
-      <svg width="320" height="320">
-        <circle :cx="head.x" :cy="head.y" :r="head.r"></circle>
-        <polyline
-          stroke-linejoin="round"
-          stroke="black"
-          stroke-width="40"
-          :points="armStr"
-          fill="none"
-        ></polyline>
-        <polyline
-          stroke-linejoin="round"
-          stroke="black"
-          stroke-width="40"
-          :points="spineStr"
-          fill="none"
-        ></polyline>
-        <polyline
-          stroke-linejoin="round"
-          stroke="black"
-          stroke-width="40"
-          :points="legStr"
-          fill="none"
-        ></polyline>
-      </svg>
-    </div>
+      <stickman :keypoints="keypoints"></stickman>
   </body>
   <!-- Place your code in the script tag below. You can also use an external .js file -->
   <script>
@@ -76,31 +52,58 @@
       position: { x: 0, y: 0 },
       score: 0,
     };
+    const findKeypoint = (keypoints, part) => {
+      let found = keypoints.find((i) => i.part === part)
+      return found ? found : init
+    };
 
-    new Vue({
-      el: "#app",
-      data() {
-        return {
-          nose: init,
-          leftEye: init,
-          rightEye: init,
-          leftEar: init,
-          rightEar: init,
-          leftShoulder: init,
-          rightShoulder: init,
-          leftElbow: init,
-          rightElbow: init,
-          leftWrist: init,
-          rightWrist: init,
-          leftHip: init,
-          rightHip: init,
-          leftKnee: init,
-          rightKnee: init,
-          leftAnkle: init,
-          rightAnkle: init,
-        };
+    Vue.component("stickman", {
+      template: `<svg width="320" height="320">
+            <circle :cx="head.x" :cy="head.y" :r="head.r"></circle>
+            <polyline
+              stroke-linejoin="round"
+              stroke="black"
+              stroke-width="40"
+              :points="armStr"
+              fill="none"
+            ></polyline>
+            <polyline
+              stroke-linejoin="round"
+              stroke="black"
+              stroke-width="40"
+              :points="spineStr"
+              fill="none"
+            ></polyline>
+            <polyline
+              stroke-linejoin="round"
+              stroke="black"
+              stroke-width="40"
+              :points="legStr"
+              fill="none"
+            ></polyline>
+          </svg>
+        </div>`,
+      props: { 
+        keypoints: Array
       },
       computed: {
+        nose(){return findKeypoint(this.keypoints, "nose")},
+        leftEye(){return findKeypoint(this.keypoints, "leftEye")},
+        rightEye(){return findKeypoint(this.keypoints, "rightEye")},
+        leftEar(){return findKeypoint(this.keypoints, "leftEar")},
+        rightEar(){return findKeypoint(this.keypoints, "rightEar")},
+        leftShoulder(){return findKeypoint(this.keypoints, "leftShoulder")},
+        rightShoulder(){return findKeypoint(this.keypoints, "rightShoulder")},
+        leftElbow(){return findKeypoint(this.keypoints, "leftElbow")},
+        rightElbow(){return findKeypoint(this.keypoints, "rightElbow")},
+        leftWrist(){return findKeypoint(this.keypoints, "leftWrist")},
+        rightWrist(){return findKeypoint(this.keypoints, "rightWrist")},
+        leftHip(){return findKeypoint(this.keypoints, "leftHip")},
+        rightHip(){return findKeypoint(this.keypoints, "rightHip")},
+        leftKnee(){return findKeypoint(this.keypoints, "leftKnee")},
+        rightKnee(){return findKeypoint(this.keypoints, "rightKnee")},
+        leftAnkle(){return findKeypoint(this.keypoints, "leftAnkle")},
+        rightAnkle(){return findKeypoint(this.keypoints, "rightAnkle")},
         arm() {
           return [
             this.leftWrist,
@@ -148,6 +151,19 @@
             ),
           };
         },
+      }
+    })
+
+
+    new Vue({
+      el: "#app",
+      data() {
+        return {
+          keypoints: []
+        };
+      },
+      computed: {
+
       },
       mounted() {
         let net = null;
@@ -183,23 +199,7 @@
                   nmsRadius: 20,
                 })
                 .then((pose) => {
-                  this.nose = $(pose, "nose");
-                  this.leftEye = $(pose, "leftEye");
-                  this.rightEye = $(pose, "rightEye");
-                  this.leftEar = $(pose, "leftEar");
-                  this.rightEar = $(pose, "rightEar");
-                  this.leftShoulder = $(pose, "leftShoulder");
-                  this.rightShoulder = $(pose, "rightShoulder");
-                  this.leftElbow = $(pose, "leftElbow");
-                  this.rightElbow = $(pose, "rightElbow");
-                  this.leftWrist = $(pose, "leftWrist");
-                  this.rightWrist = $(pose, "rightWrist");
-                  this.leftHip = $(pose, "leftHip");
-                  this.rightHip = $(pose, "rightHip");
-                  this.leftKnee = $(pose, "leftKnee");
-                  this.rightKnee = $(pose, "rightKnee");
-                  this.leftAnkle = $(pose, "leftAnkle");
-                  this.rightAnkle = $(pose, "rightAnkle");
+                  this.keypoints = pose.keypoints
                 });
             }
           }, 50);
