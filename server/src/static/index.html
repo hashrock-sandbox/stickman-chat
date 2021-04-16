@@ -1,66 +1,231 @@
-<!DOCTYPE html>
 <html>
   <head>
-    <meta name="viewport" content="width=device-width" />
-
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.12/vue.min.js"
+      integrity="sha512-BKbSR+cfyxLdMAsE0naLReFSLg8/pjbgfxHh/k/kUC82Hy7r6HtR5hLhobaln2gcTvzkyyehrdREdjpsQwy2Jw=="
+      crossorigin="anonymous"
+    ></script>
+    <!-- Load TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <!-- Load Posenet -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
     <style>
-      body { font-family: Tahoma, Geneva, sans-serif; }
+      canvas {
+        display: none;
+      }
+      video {
+        display: none;
+      }
     </style>
-
-    <!-- colyseus.js client -->
-    <script type="text/javascript" src="https://unpkg.com/colyseus.js@^0.14.0/dist/colyseus.js"></script>
-
   </head>
+
   <body>
-
-    <strong>Messages</strong><br>
-
-    <form id="form">
-      <input type="text" id="input" value="" autofocus/>
-      <input type="submit" value="send" />
-    </form>
-
-    <div id="messages"></div>
-
-    <script>
-      var host = window.document.location.host.replace(/:.*/, '');
-
-      var client = new Colyseus.Client(location.protocol.replace("http", "ws") + "//" + host + (location.port ? ':'+location.port : ''));
-      client.joinOrCreate("chat").then(room => {
-        console.log("joined");
-        room.onStateChange.once(function(state) {
-            console.log("initial room state:", state);
-        });
-
-        // new room state
-        room.onStateChange(function(state) {
-            // this signal is triggered on each patch
-        });
-
-        // listen to patches coming from the server
-        room.onMessage("messages", function(message) {
-            var p = document.createElement("p");
-            p.innerText = message;
-            console.log(message)
-            document.querySelector("#messages").appendChild(p);
-        });
-
-        // send message to room on submit
-        document.querySelector("#form").onsubmit = function(e) {
-            e.preventDefault();
-
-            var input = document.querySelector("#input");
-
-            console.log("input:", input.value);
-
-            // send data to room
-            room.send("message", {message: input.value, x:0, y:0});
-
-            // clear input
-            input.value = "";
-        }
-      });
-
-    </script>
+    <div id="app">
+      <video id="player" autoplay></video>
+      <canvas id="snapshot" width="320" height="320"></canvas>
+      <stickman :keypoints="keypoints"></stickman>
   </body>
+  <!-- Place your code in the script tag below. You can also use an external .js file -->
+  <script>
+    const dst = (a, b) =>
+      Math.pow(
+        Math.pow(a.position.x - b.position.x, 2) +
+          Math.pow(a.position.y - b.position.y, 2),
+        0.5
+      );
+    const avg = (a, b) => {
+      return {
+        position: {
+          x: (a.position.x + b.position.x) / 2,
+          y: (a.position.y + b.position.y) / 2,
+        },
+        score: Math.min(a.score + b.score),
+      };
+    };
+    const toPoints = (p) => {
+      return p
+        .filter((i) => i.score > 0.1)
+        .map((i) => `${i.position.x},${i.position.y}`)
+        .join(" ");
+    };
+    let init = {
+      position: { x: 0, y: 0 },
+      score: 0,
+    };
+    const findKeypoint = (keypoints, part) => {
+      let found = keypoints.find((i) => i.part === part)
+      return found ? found : init
+    };
+
+    Vue.component("stickman", {
+      template: `<svg width="320" height="320">
+            <circle :cx="head.x" :cy="head.y" :r="head.r"></circle>
+            <polyline
+              stroke-linejoin="round"
+              stroke="black"
+              stroke-width="40"
+              :points="armStr"
+              fill="none"
+            ></polyline>
+            <polyline
+              stroke-linejoin="round"
+              stroke="black"
+              stroke-width="40"
+              :points="spineStr"
+              fill="none"
+            ></polyline>
+            <polyline
+              stroke-linejoin="round"
+              stroke="black"
+              stroke-width="40"
+              :points="legStr"
+              fill="none"
+            ></polyline>
+          </svg>
+        </div>`,
+      props: { 
+        keypoints: Array
+      },
+      computed: {
+        nose(){return findKeypoint(this.keypoints, "nose")},
+        leftEye(){return findKeypoint(this.keypoints, "leftEye")},
+        rightEye(){return findKeypoint(this.keypoints, "rightEye")},
+        leftEar(){return findKeypoint(this.keypoints, "leftEar")},
+        rightEar(){return findKeypoint(this.keypoints, "rightEar")},
+        leftShoulder(){return findKeypoint(this.keypoints, "leftShoulder")},
+        rightShoulder(){return findKeypoint(this.keypoints, "rightShoulder")},
+        leftElbow(){return findKeypoint(this.keypoints, "leftElbow")},
+        rightElbow(){return findKeypoint(this.keypoints, "rightElbow")},
+        leftWrist(){return findKeypoint(this.keypoints, "leftWrist")},
+        rightWrist(){return findKeypoint(this.keypoints, "rightWrist")},
+        leftHip(){return findKeypoint(this.keypoints, "leftHip")},
+        rightHip(){return findKeypoint(this.keypoints, "rightHip")},
+        leftKnee(){return findKeypoint(this.keypoints, "leftKnee")},
+        rightKnee(){return findKeypoint(this.keypoints, "rightKnee")},
+        leftAnkle(){return findKeypoint(this.keypoints, "leftAnkle")},
+        rightAnkle(){return findKeypoint(this.keypoints, "rightAnkle")},
+        arm() {
+          return [
+            this.leftWrist,
+            this.leftElbow,
+            this.leftShoulder,
+            this.rightShoulder,
+            this.rightElbow,
+            this.rightWrist,
+          ];
+        },
+        leg() {
+          return [
+            this.leftAnkle,
+            this.leftKnee,
+            this.hip,
+            this.rightKnee,
+            this.rightAnkle,
+          ];
+        },
+        legStr() {
+          return toPoints(this.leg);
+        },
+        spine() {
+          return [this.nose, this.neck, this.hip];
+        },
+        spineStr() {
+          return toPoints(this.spine);
+        },
+        armStr() {
+          return toPoints(this.arm);
+        },
+        neck() {
+          return avg(this.leftShoulder, this.rightShoulder);
+        },
+        hip() {
+          return avg(this.leftHip, this.rightHip);
+        },
+        head() {
+          return {
+            x: this.nose.position.x,
+            y: this.nose.position.y,
+            r: Math.max(
+              dst(this.leftShoulder, this.rightShoulder) / 2,
+              dst(this.neck, this.nose) * 0.7
+            ),
+          };
+        },
+      }
+    })
+
+
+    new Vue({
+      el: "#app",
+      data() {
+        return {
+          keypoints: []
+        };
+      },
+      computed: {
+
+      },
+      mounted() {
+        let net = null;
+        posenet
+          .load()
+          .then(function (_net) {
+            net = _net;
+            console.log("loaded");
+          })
+          .then(function (poses) {
+            console.log(poses);
+          });
+
+        let player = document.getElementById("player");
+        let snapshotCanvas = document.getElementById("snapshot");
+        let width = snapshotCanvas.width;
+        let height = snapshotCanvas.height;
+
+        // Hey frontend guys, I reinvented jQuery
+        const $ = (pose, part) => pose.keypoints.find((i) => i.part === part);
+
+        let startScan = (callback) => {
+          const ctx = snapshotCanvas.getContext("2d");
+          let intervalHandler = setInterval(() => {
+            ctx.drawImage(player, 0, 0, width, height);
+            // ctx.clearRect(0, 0, width, height);
+            const imageData = ctx.getImageData(0, 0, width, height);
+            if (net) {
+              net
+                .estimateSinglePose(imageData, {
+                  flipHorizontal: true,
+                  scoreThreshold: 0.6,
+                  nmsRadius: 20,
+                })
+                .then((pose) => {
+                  this.keypoints = pose.keypoints
+                });
+            }
+          }, 50);
+        };
+
+        let handleSuccess = function (stream) {
+          // カメラストリームをプレイヤーのデータに設定
+          player.srcObject = stream;
+
+          startScan((scanResult) => {
+            // このページの呼び出し元に読み取り結果を返す
+          });
+        };
+
+        // このメソッドを呼び出すことでユーザーにブラウザがカメラを使用することを許可するかの確認ダイアログが表示され、
+        // 許可されれば handleSuccess が呼ばれる
+        navigator.mediaDevices
+          .getUserMedia({
+            video: { facingMode: "environment", width: width, height: height },
+            audio: false,
+          })
+          .then(handleSuccess)
+          .catch((err) => {
+            console.log(JSON.stringify(err));
+          });
+      },
+    });
+  </script>
 </html>
