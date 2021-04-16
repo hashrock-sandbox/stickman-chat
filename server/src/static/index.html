@@ -9,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <!-- Load Posenet -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
+    <script type="text/javascript" src="https://unpkg.com/colyseus.js@^0.14.0/dist/colyseus.js"></script>
     <style>
       canvas {
         display: none;
@@ -166,6 +167,40 @@
 
       },
       mounted() {
+        var host = window.document.location.host.replace(/:.*/, '');
+        var client = new Colyseus.Client(location.protocol.replace("http", "ws") + "//" + host + (location.port ? ':'+location.port : ''));
+        client.joinOrCreate("chat").then(room => {
+          console.log("joined");
+          room.onStateChange.once(function(state) {
+              console.log("initial room state:", state);
+          });
+
+          // new room state
+          room.onStateChange(function(state) {
+              // this signal is triggered on each patch
+          });
+
+          // listen to patches coming from the server
+          room.onMessage("messages", function(message) {
+            
+          });
+
+          // send message to room on submit
+          document.querySelector("#form").onsubmit = function(e) {
+              e.preventDefault();
+
+              var input = document.querySelector("#input");
+
+              console.log("input:", input.value);
+
+              // send data to room
+              room.send("message", {message: input.value, x:0, y:0});
+
+              // clear input
+              input.value = "";
+          }
+        });
+
         let net = null;
         posenet
           .load()
