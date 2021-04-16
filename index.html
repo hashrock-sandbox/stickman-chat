@@ -1,0 +1,113 @@
+<html>
+  <head>
+    <!-- Load TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <!-- Load Posenet -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
+    <style>
+      video {
+        display: none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <video id="player" autoplay></video>
+    <canvas id="snapshot" width="480" height="640"></canvas>
+    <img id="cat" src="/images/cat.jpg " />
+  </body>
+  <!-- Place your code in the script tag below. You can also use an external .js file -->
+  <script>
+    var imageElement = document.getElementById("cat");
+    let net = null;
+
+    posenet
+      .load()
+      .then(function (_net) {
+        net = _net;
+        console.log("loaded");
+      })
+      .then(function (poses) {
+        console.log(poses);
+      });
+
+    let player = document.getElementById("player");
+    let snapshotCanvas = document.getElementById("snapshot");
+    let width = snapshotCanvas.width;
+    let height = snapshotCanvas.height;
+    const segments = [
+      {
+        features: [
+          "neck",
+          "rightShoulder",
+          "rightElbow",
+          "rightWrist",
+          "rightHand",
+        ],
+      },
+      {
+        features: [
+          "neck",
+          "leftShoulder",
+          "leftElbow",
+          "leftWrist",
+          "leftHand",
+        ],
+      },
+      {
+        features: ["neck", "hip"],
+      },
+      {
+        features: ["hip", "rightKnee", "rightAnkle", "rightFoot"],
+      },
+      {
+        features: ["hip", "leftKnee", "leftAnkle", "leftFoot"],
+      },
+    ];
+
+    let startScan = function (callback) {
+      const ctx = snapshotCanvas.getContext("2d");
+      // 500ms間隔でスナップショットを取得し、QRコードの読み取りを行う
+      let intervalHandler = setInterval(() => {
+        // ctx.drawImage(player, 0, 0, width, height);
+        ctx.clearRect(0, 0, width, height);
+        const imageData = ctx.getImageData(0, 0, width, height);
+        if (net) {
+          net.estimateSinglePose(imageData, {
+              flipHorizontal: false,
+              scoreThreshold: 0.6,
+              nmsRadius: 20,
+            })
+            .then((pose) => {
+              console.log(pose);
+
+              for (let p of pose.keypoints) {
+                ctx.fillRect(p.position.x, p.position.y, 10, 10);
+              }
+            });
+        }
+      }, 100);
+    };
+
+    let handleSuccess = function (stream) {
+      // カメラストリームをプレイヤーのデータに設定
+      player.srcObject = stream;
+
+      startScan((scanResult) => {
+        // このページの呼び出し元に読み取り結果を返す
+      });
+    };
+
+    // このメソッドを呼び出すことでユーザーにブラウザがカメラを使用することを許可するかの確認ダイアログが表示され、
+    // 許可されれば handleSuccess が呼ばれる
+    navigator.mediaDevices
+      .getUserMedia({
+        video: { facingMode: "environment", width: width, height: height },
+        audio: false,
+      })
+      .then(handleSuccess)
+      .catch((err) => {
+        console.log(JSON.stringify(err));
+      });
+  </script>
+</html>
