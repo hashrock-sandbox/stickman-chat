@@ -25,6 +25,20 @@
           :points="armStr"
           fill="none"
         ></polyline>
+        <polyline
+          stroke-linejoin="round"
+          stroke="black"
+          stroke-width="40"
+          :points="spineStr"
+          fill="none"
+        ></polyline>
+        <polyline
+          stroke-linejoin="round"
+          stroke="black"
+          stroke-width="40"
+          :points="legStr"
+          fill="none"
+        ></polyline>
       </svg>
     </div>
   </body>
@@ -34,6 +48,9 @@
       Math.pow(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2), 0.5);
     const avg = (a, b) => {
       return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    };
+    const toPoints = (p) => {
+      return p.map((i) => `${i.x},${i.y}`).join(" ");
     };
 
     new Vue({
@@ -62,20 +79,40 @@
       computed: {
         arm() {
           return [
+            this.leftWrist,
             this.leftElbow,
             this.leftShoulder,
             this.rightShoulder,
             this.rightElbow,
+            this.rightWrist,
           ];
         },
+        leg() {
+          return [
+            this.leftAnkle,
+            this.leftKnee,
+            this.hip,
+            this.rightKnee,
+            this.rightAnkle,
+          ];
+        },
+        legStr() {
+          return toPoints(this.leg)
+        },
+        spine() {
+          return [this.nose, this.neck, this.hip];
+        },
+        spineStr() {
+          return toPoints(this.spine);
+        },
         armStr() {
-          if (this.arm.length === 0) {
-            return;
-          }
-          return this.arm.map((i) => `${i.x},${i.y}`).join(" ");
+          return toPoints(this.arm);
         },
         neck() {
-          return;
+          return avg(this.leftShoulder, this.rightShoulder);
+        },
+        hip() {
+          return avg(this.leftHip, this.rightHip);
         },
         head() {
           return {
@@ -115,7 +152,7 @@
             if (net) {
               net
                 .estimateSinglePose(imageData, {
-                  flipHorizontal: false,
+                  flipHorizontal: true,
                   scoreThreshold: 0.6,
                   nmsRadius: 20,
                 })
