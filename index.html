@@ -1,113 +1,168 @@
 <html>
   <head>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.12/vue.min.js"
+      integrity="sha512-BKbSR+cfyxLdMAsE0naLReFSLg8/pjbgfxHh/k/kUC82Hy7r6HtR5hLhobaln2gcTvzkyyehrdREdjpsQwy2Jw=="
+      crossorigin="anonymous"
+    ></script>
     <!-- Load TensorFlow.js -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <!-- Load Posenet -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
-    <style>
-      video {
-        display: none;
-      }
-    </style>
+    <style></style>
   </head>
 
   <body>
-    <video id="player" autoplay></video>
-    <canvas id="snapshot" width="480" height="640"></canvas>
-    <img id="cat" src="/images/cat.jpg " />
+    <div id="app">
+      <video id="player" autoplay></video>
+      <canvas id="snapshot" width="320" height="320"></canvas>
+      <svg width="320" height="320">
+        <circle :cx="head.x" :cy="head.y" :r="head.r"></circle>
+        <polyline
+          stroke-linejoin="round"
+          stroke="black"
+          stroke-width="40"
+          :points="armStr"
+          fill="none"
+        ></polyline>
+      </svg>
+    </div>
   </body>
   <!-- Place your code in the script tag below. You can also use an external .js file -->
   <script>
-    var imageElement = document.getElementById("cat");
-    let net = null;
-
-    posenet
-      .load()
-      .then(function (_net) {
-        net = _net;
-        console.log("loaded");
-      })
-      .then(function (poses) {
-        console.log(poses);
-      });
-
-    let player = document.getElementById("player");
-    let snapshotCanvas = document.getElementById("snapshot");
-    let width = snapshotCanvas.width;
-    let height = snapshotCanvas.height;
-    const segments = [
-      {
-        features: [
-          "neck",
-          "rightShoulder",
-          "rightElbow",
-          "rightWrist",
-          "rightHand",
-        ],
-      },
-      {
-        features: [
-          "neck",
-          "leftShoulder",
-          "leftElbow",
-          "leftWrist",
-          "leftHand",
-        ],
-      },
-      {
-        features: ["neck", "hip"],
-      },
-      {
-        features: ["hip", "rightKnee", "rightAnkle", "rightFoot"],
-      },
-      {
-        features: ["hip", "leftKnee", "leftAnkle", "leftFoot"],
-      },
-    ];
-
-    let startScan = function (callback) {
-      const ctx = snapshotCanvas.getContext("2d");
-      // 500ms間隔でスナップショットを取得し、QRコードの読み取りを行う
-      let intervalHandler = setInterval(() => {
-        // ctx.drawImage(player, 0, 0, width, height);
-        ctx.clearRect(0, 0, width, height);
-        const imageData = ctx.getImageData(0, 0, width, height);
-        if (net) {
-          net.estimateSinglePose(imageData, {
-              flipHorizontal: false,
-              scoreThreshold: 0.6,
-              nmsRadius: 20,
-            })
-            .then((pose) => {
-              console.log(pose);
-
-              for (let p of pose.keypoints) {
-                ctx.fillRect(p.position.x, p.position.y, 10, 10);
-              }
-            });
-        }
-      }, 100);
+    const dst = (a, b) =>
+      Math.pow(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2), 0.5);
+    const avg = (a, b) => {
+      return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
     };
 
-    let handleSuccess = function (stream) {
-      // カメラストリームをプレイヤーのデータに設定
-      player.srcObject = stream;
+    new Vue({
+      el: "#app",
+      data() {
+        return {
+          nose: { x: 0, y: 0 },
+          leftEye: { x: 0, y: 0 },
+          rightEye: { x: 0, y: 0 },
+          leftEar: { x: 0, y: 0 },
+          rightEar: { x: 0, y: 0 },
+          leftShoulder: { x: 0, y: 0 },
+          rightShoulder: { x: 0, y: 0 },
+          leftElbow: { x: 0, y: 0 },
+          rightElbow: { x: 0, y: 0 },
+          leftWrist: { x: 0, y: 0 },
+          rightWrist: { x: 0, y: 0 },
+          leftHip: { x: 0, y: 0 },
+          rightHip: { x: 0, y: 0 },
+          leftKnee: { x: 0, y: 0 },
+          rightKnee: { x: 0, y: 0 },
+          leftAnkle: { x: 0, y: 0 },
+          rightAnkle: { x: 0, y: 0 },
+        };
+      },
+      computed: {
+        arm() {
+          return [
+            this.leftElbow,
+            this.leftShoulder,
+            this.rightShoulder,
+            this.rightElbow,
+          ];
+        },
+        armStr() {
+          if (this.arm.length === 0) {
+            return;
+          }
+          return this.arm.map((i) => `${i.x},${i.y}`).join(" ");
+        },
+        neck() {
+          return;
+        },
+        head() {
+          return {
+            x: this.nose.x,
+            y: this.nose.y,
+            r: dst(this.leftShoulder, this.rightShoulder) / 2,
+          };
+        },
+      },
+      mounted() {
+        let net = null;
+        posenet
+          .load()
+          .then(function (_net) {
+            net = _net;
+            console.log("loaded");
+          })
+          .then(function (poses) {
+            console.log(poses);
+          });
 
-      startScan((scanResult) => {
-        // このページの呼び出し元に読み取り結果を返す
-      });
-    };
+        let player = document.getElementById("player");
+        let snapshotCanvas = document.getElementById("snapshot");
+        let width = snapshotCanvas.width;
+        let height = snapshotCanvas.height;
 
-    // このメソッドを呼び出すことでユーザーにブラウザがカメラを使用することを許可するかの確認ダイアログが表示され、
-    // 許可されれば handleSuccess が呼ばれる
-    navigator.mediaDevices
-      .getUserMedia({
-        video: { facingMode: "environment", width: width, height: height },
-        audio: false,
-      })
-      .then(handleSuccess)
-      .catch((err) => {
-        console.log(JSON.stringify(err));
-      });
+        // Hey frontend guys, I reinvented jQuery
+        const $ = (pose, part) =>
+          pose.keypoints.find((i) => i.part === part).position;
+
+        let startScan = (callback) => {
+          const ctx = snapshotCanvas.getContext("2d");
+          let intervalHandler = setInterval(() => {
+            ctx.drawImage(player, 0, 0, width, height);
+            // ctx.clearRect(0, 0, width, height);
+            const imageData = ctx.getImageData(0, 0, width, height);
+            if (net) {
+              net
+                .estimateSinglePose(imageData, {
+                  flipHorizontal: false,
+                  scoreThreshold: 0.6,
+                  nmsRadius: 20,
+                })
+                .then((pose) => {
+                  this.nose = $(pose, "nose");
+                  this.leftEye = $(pose, "leftEye");
+                  this.rightEye = $(pose, "rightEye");
+                  this.leftEar = $(pose, "leftEar");
+                  this.rightEar = $(pose, "rightEar");
+                  this.leftShoulder = $(pose, "leftShoulder");
+                  this.rightShoulder = $(pose, "rightShoulder");
+                  this.leftElbow = $(pose, "leftElbow");
+                  this.rightElbow = $(pose, "rightElbow");
+                  this.leftWrist = $(pose, "leftWrist");
+                  this.rightWrist = $(pose, "rightWrist");
+                  this.leftHip = $(pose, "leftHip");
+                  this.rightHip = $(pose, "rightHip");
+                  this.leftKnee = $(pose, "leftKnee");
+                  this.rightKnee = $(pose, "rightKnee");
+                  this.leftAnkle = $(pose, "leftAnkle");
+                  this.rightAnkle = $(pose, "rightAnkle");
+                });
+            }
+          }, 100);
+        };
+
+        let handleSuccess = function (stream) {
+          // カメラストリームをプレイヤーのデータに設定
+          player.srcObject = stream;
+
+          startScan((scanResult) => {
+            // このページの呼び出し元に読み取り結果を返す
+          });
+        };
+
+        // このメソッドを呼び出すことでユーザーにブラウザがカメラを使用することを許可するかの確認ダイアログが表示され、
+        // 許可されれば handleSuccess が呼ばれる
+        navigator.mediaDevices
+          .getUserMedia({
+            video: { facingMode: "environment", width: width, height: height },
+            audio: false,
+          })
+          .then(handleSuccess)
+          .catch((err) => {
+            console.log(JSON.stringify(err));
+          });
+      },
+    });
   </script>
 </html>
